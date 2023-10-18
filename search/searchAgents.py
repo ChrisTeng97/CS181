@@ -292,23 +292,25 @@ class CornersProblem(search.SearchProblem):
         # Please add any code here which you would like to use
         # in initializing the problem
         "*** YOUR CODE HERE ***"
+        self.start = (self.startingPosition, list(self.corners))
+        self.startingGameState = startingGameState
 
-    def getStartState(self):
+    def getStartState(self): # -> Tuple(position, corners)
         """
         Returns the start state (in your state space, not the full Pacman state
         space)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.start
 
-    def isGoalState(self, state: Any):
+    def isGoalState(self, state: Any): 
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return len(state[1] == 0)
 
-    def getSuccessors(self, state: Any):
+    def getSuccessors(self, state: Any): # -> List[Tuple(successor, action, stepCost)]
         """
         Returns successor states, the actions they require, and a cost of 1.
 
@@ -329,11 +331,21 @@ class CornersProblem(search.SearchProblem):
             #   hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
-
+            x,y = state[0]
+            corners = state[1]
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            hitsWall = self.walls[nextx][nexty]
+            if not hitsWall:
+                if (nextx, nexty) in corners:
+                    corners.remove((nextx, nexty))
+                nextState = ((nextx, nexty), corners)
+                successors.append((nextState, action, 1))
+                
         self._expanded += 1 # DO NOT CHANGE
         return successors
 
-    def getCostOfActions(self, actions):
+    def getCostOfActions(self, actions): 
         """
         Returns the cost of a particular sequence of actions.  If those actions
         include an illegal move, return 999999.  This is implemented for you.
@@ -364,6 +376,14 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
+    position, corners = state
+    if len(corners) != 0:
+        minDistance = int(1e9)
+        for corner in corners:
+            distance = mazeDistance(position, corner, problem.startingGameState)
+            if distance < minDistance:
+                minDistance = distance
+        return minDistance
     return 0 # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
@@ -458,6 +478,13 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
+    if foodGrid.count() != 0:
+        minDistance = int(1e9)
+        for food in foodGrid.asList():
+            distance = mazeDistance(position, food, problem.startingGameState)
+            if distance < minDistance:
+                minDistance = distance
+        return minDistance
     return 0
 
 class ClosestDotSearchAgent(SearchAgent):
@@ -489,7 +516,15 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        x, y = startPosition
+        minDistance = int(1e9)
+        for food in food.asList():
+            distance = mazeDistance((x, y), food, gameState)
+            if distance < minDistance:
+                minDistance = distance
+                closestFood = food
+        return search.bfs(problem, closestFood)
+
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -525,7 +560,7 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.food[x][y]
 
 class ApproximateSearchAgent(Agent):
     "Implement your agent here.  Change anything but the class name."
