@@ -124,15 +124,17 @@ def uniformCostSearch(problem: SearchProblem):
     state = problem.getStartState()
     frontier = util.PriorityQueue()
     expanded = set()
-    frontier.push((state, []), 0)
+    frontier.push((state, [], 0), 0)
     while not frontier.isEmpty():
-        state, actions = frontier.pop()
+        state, actions, cost = frontier.pop()
         if problem.isGoalState(state):
             return actions
         if state not in expanded:
             expanded.add(state)
             for successor in problem.getSuccessors(state):
-                frontier.push((successor[0], actions + [successor[1]]), successor[2])
+                frontier.push((successor[0], actions + [successor[1]], cost + successor[2]), 
+                            cost + successor[2])
+                            
     return []
 
 def nullHeuristic(state, problem=None):
@@ -148,16 +150,16 @@ def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic):
     state = problem.getStartState()
     frontier = util.PriorityQueue()
     expanded = set()
-    frontier.push((state, []), 0)
+    frontier.push((state, [], 0), 0) # (state, actions, cost), priority
     while not frontier.isEmpty():
-        state, actions = frontier.pop()
+        state, actions, cost = frontier.pop()
         if problem.isGoalState(state):
             return actions
         if state not in expanded:
             expanded.add(state)
             for successor in problem.getSuccessors(state):
-                frontier.push((successor[0], actions + [successor[1]]), 
-                            successor[2] + heuristic(successor[0], problem))
+                frontier.push((successor[0], actions + [successor[1]], cost + successor[2]), 
+                            cost + successor[2] + heuristic(successor[0], problem))
     return []
 
 # Abbreviations
