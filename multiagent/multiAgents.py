@@ -70,30 +70,24 @@ class ReflexAgent(Agent):
         # Useful information you can extract from a GameState (pacman.py)
         childGameState = currentGameState.getPacmanNextState(action)
         newPos = childGameState.getPacmanPosition()
-        newFood = childGameState.getFood()
+        newFood = childGameState.getFood().asList()
         newGhostStates = childGameState.getGhostStates()
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        ghostPos = [ghost.getPosition() for ghost in newGhostStates 
-                    if ghost.scaredTimer == 0]
-        if len(ghostPos) > 0:
-            minGhostDist = min([util.manhattanDistance(newPos, ghost) for ghost in ghostPos])
-        else:
-            minGhostDist = 1e6
-        # Lose the game
-        if minGhostDist == 0:
-            return -200.0
-        # Eat the food
+        newGhostPos = [ghost.getPosition() for ghost in newGhostStates if ghost.scaredTimer == 0]
+        score = 0
+        if newPos in newGhostPos:
+            return -1e9
         if newPos in currentGameState.getFood().asList():
-            return 200.0
-        minFoodDist = min([util.manhattanDistance(newPos, food) for food in newFood.asList()])
-        # Calculate the score
-        loss = 0
-        if minGhostDist <= 5:
-                loss = 100 / minGhostDist
-        profit = 100 / minFoodDist
-        return profit - loss
+            score += 10
+        if len(newFood) > 0:
+            minFoodDist = min([util.manhattanDistance(newPos, food) for food in newFood])
+            score += 10 / minFoodDist
+        if len(newGhostPos) > 0:
+            minGhostDist = min([util.manhattanDistance(newPos, ghost) for ghost in newGhostPos])
+            score -= 10 / minGhostDist
+        return score
 
 def scoreEvaluationFunction(currentGameState: GameState):
     """
@@ -203,12 +197,17 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
         legalMoves = gameState.getLegalActions()
-        scores = [self.minimax(gameState.getNextState(0, action), 0, 1, 
-                    alpha = -1e9, beta = 1e9) for action in legalMoves]
-        bestScore = max(scores)
-        bestIndices = [index for index in range(len(scores)) 
-                        if scores[index] == bestScore]
-        return legalMoves[random.choice(bestIndices)]
+        alpha, beta = -1e9, 1e9
+        bestAction = Directions.STOP
+        for action in legalMoves:
+            score = self.minimax(gameState.getNextState(0, action), 0, 1, 
+                    alpha, beta)
+            if score > beta:
+                return alpha
+            if score > alpha:
+                bestAction = action
+            alpha = max(score, alpha)
+        return bestAction
 
     # Minimax algorithm with alpha-beta pruning, return the score of the state
     def minimax(self, gameState: GameState, depth: int, agentIndex: int, 
@@ -315,41 +314,27 @@ def betterEvaluationFunction(currentGameState: GameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    if currentGameState.isWin():
-        return 1
-    if currentGameState.isLose():
-        return -1
     newPos = currentGameState.getPacmanPosition()
     newFood = currentGameState.getFood().asList()
-    newCapsules = []
-    if currentGameState.getCapsules() != []:
-        newCapsules = currentGameState.getCapsules()
     newGhostStates = currentGameState.getGhostStates()
-    newGhostPos = [ghost.getPosition() for ghost in newGhostStates 
-                    if ghost.scaredTimer == 0]
-    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
-    loss = 0
-    profit = 0
-    if len(newGhostPos) > 0:
-        minGhostDist = min([util.manhattanDistance(newPos, ghost) for ghost in newGhostPos])
-    else:
-        minGhostDist = 1e6
-    # Lose the game
-    if minGhostDist == 0:
-        return -1
-    # Eat the food
-    if newPos in newFood:
-        return 1
-    minFoodDist = min([util.manhattanDistance(newPos, food) for food in newFood])
-    if newCapsules != []:
-        minCapsuleDist = min([util.manhattanDistance(newPos, capsule) for capsule in newCapsules])
-        if minCapsuleDist < 5:
-            profit += 150 / minCapsuleDist
-    # Calculate the score
-    if minGhostDist <= 5:
-            loss += 100 / minGhostDist
-    profit += 100 / minFoodDist
-    return profit - loss
+    score = currentGameState.getScore()
+    if len(newFood) > 0:
+        minFoodDist = min([util.manhattanDistance(newPos, food) for food in newFood])
+        score += 10 / minFoodDist
+        
+    for ghost in newGhostStates:
+        ghostDist = util.manhattanDistance(newPos, ghost.getPosition())
+        if ghostDist > 0:
+            # Eat the ghost
+            if ghost.scaredTimer > 0:
+                score += 30 / ghostDist
+            # Run away from the ghost
+            else:
+                score -= 10 / ghostDist
+        # Lose the game
+        else:
+            return -1e9
+    return score
 
 # Abbreviation
 better = betterEvaluationFunction
