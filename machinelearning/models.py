@@ -27,7 +27,7 @@ class PerceptronModel(object):
         Returns: a node containing a single number (the score)
         """
         "*** YOUR CODE HERE ***"
-        
+        return nn.DotProduct(x, self.w)
 
     def get_prediction(self, x):
         """
@@ -36,12 +36,25 @@ class PerceptronModel(object):
         Returns: 1 or -1
         """
         "*** YOUR CODE HERE ***"
+        score = nn.as_scalar(self.run(x))
+        if score >= 0:
+            return 1
+        else:
+            return -1
 
     def train(self, dataset):
         """
         Train the perceptron until convergence.
         """
         "*** YOUR CODE HERE ***"
+        while True:
+            flag = True
+            for x, y in dataset.iterate_once(1):
+                if self.get_prediction(x) != nn.as_scalar(y):
+                    flag = False
+                    self.w.update(x, nn.as_scalar(y))
+            if flag:
+                break
 
 class RegressionModel(object):
     """
@@ -52,6 +65,12 @@ class RegressionModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        self.w0 = nn.Parameter(1, 50)
+        self.b0 = nn.Parameter(1, 50)
+        self.w1 = nn.Parameter(50, 1)
+        self.b1 = nn.Parameter(1, 1)
+        self.learning_rate = -0.01
+        self.batch_size = 25
 
     def run(self, x):
         """
@@ -63,6 +82,12 @@ class RegressionModel(object):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
+        xw0 = nn.Linear(x, self.w0)
+        xw0b0 = nn.AddBias(xw0, self.b0)
+        relu = nn.ReLU(xw0b0)
+        xw1 = nn.Linear(relu, self.w1)
+        xw1b1 = nn.AddBias(xw1, self.b1)
+        return xw1b1
 
     def get_loss(self, x, y):
         """
@@ -75,12 +100,25 @@ class RegressionModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        y_pred = self.run(x)
+        return nn.SquareLoss(y_pred, y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        while True:
+            for x, y in dataset.iterate_once(self.batch_size):
+                self.loss = self.get_loss(x, y)
+                if nn.as_scalar(self.loss) < 0.005:
+                    return
+                else:
+                    grad_wrt_w0, grad_wrt_b0, grad_wrt_w1, grad_wrt_b1 = nn.gradients(self.loss, [self.w0, self.b0, self.w1, self.b1])
+                    self.w0.update(grad_wrt_w0, self.learning_rate)
+                    self.b0.update(grad_wrt_b0, self.learning_rate)
+                    self.w1.update(grad_wrt_w1, self.learning_rate)
+                    self.b1.update(grad_wrt_b1, self.learning_rate)
 
 class DigitClassificationModel(object):
     """
@@ -99,6 +137,14 @@ class DigitClassificationModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        self.w0 = nn.Parameter(784, 400)
+        self.b0 = nn.Parameter(1, 400)
+        self.w1 = nn.Parameter(400, 200)
+        self.b1 = nn.Parameter(1, 200)
+        self.w2 = nn.Parameter(200, 10)
+        self.b2 = nn.Parameter(1, 10)
+        self.learning_rate = -0.15
+        self.batch_size = 100
 
     def run(self, x):
         """
@@ -115,6 +161,15 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        xw0 = nn.Linear(x, self.w0)
+        xw0b0 = nn.AddBias(xw0, self.b0)
+        relu = nn.ReLU(xw0b0)
+        xw1 = nn.Linear(relu, self.w1)
+        xw1b1 = nn.AddBias(xw1, self.b1)
+        relu = nn.ReLU(xw1b1)
+        xw2 = nn.Linear(relu, self.w2)
+        xw2b2 = nn.AddBias(xw2, self.b2)
+        return xw2b2
 
     def get_loss(self, x, y):
         """
@@ -130,12 +185,29 @@ class DigitClassificationModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        y_pred = self.run(x)
+        return nn.SoftmaxLoss(y_pred, y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        while True:
+            lr = self.learning_rate
+            for x, y in dataset.iterate_once(self.batch_size):
+                self.loss = self.get_loss(x, y)
+                if dataset.get_validation_accuracy() > 0.975:
+                    return
+                grad_wrt_w0, grad_wrt_b0, grad_wrt_w1, grad_wrt_b1, grad_wrt_w2, grad_wrt_b2 = nn.gradients(self.loss, [self.w0, self.b0, self.w1, self.b1, self.w2, self.b2])
+                self.w0.update(grad_wrt_w0, lr)
+                self.b0.update(grad_wrt_b0, lr)
+                self.w1.update(grad_wrt_w1, lr)
+                self.b1.update(grad_wrt_b1, lr)
+                self.w2.update(grad_wrt_w2, lr)
+                self.b2.update(grad_wrt_b2, lr)
+                if lr < -0.05:
+                    lr *= 0.7
 
 class LanguageIDModel(object):
     """
@@ -155,6 +227,11 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        self.w0 = nn.Parameter(self.num_chars, 200)
+        self.w1 = nn.Parameter(200, 200)
+        self.w2 = nn.Parameter(200, 5)
+        self.learning_rate = -0.15
+        self.batch_size = 50
 
     def run(self, xs):
         """
@@ -186,6 +263,10 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        h = nn.Linear(xs[0], self.w0)
+        for x in xs[1:]:
+            h = nn.Add(nn.Linear(x, self.w0), nn.ReLU(nn.Linear(h, self.w1)))
+        return nn.Linear(h, self.w2)
 
     def get_loss(self, xs, y):
         """
@@ -202,9 +283,23 @@ class LanguageIDModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        y_pred = self.run(xs)
+        return nn.SoftmaxLoss(y_pred, y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        while True:
+            lr = self.learning_rate
+            for x, y in dataset.iterate_once(self.batch_size):
+                self.loss = self.get_loss(x, y)
+                if dataset.get_validation_accuracy() > 0.86:
+                    return
+                grad_wrt_w0, grad_wrt_w1, grad_wrt_w2 = nn.gradients(self.loss, [self.w0, self.w1, self.w2])
+                self.w0.update(grad_wrt_w0, lr)
+                self.w1.update(grad_wrt_w1, lr)
+                self.w2.update(grad_wrt_w2, lr)
+                if lr < -0.05:
+                    lr *= 0.8
